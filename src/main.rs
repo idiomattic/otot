@@ -22,7 +22,9 @@ fn classify_input(address: &str) -> InputType {
 
     let with_scheme = format!("https://{}", address);
     if let Ok(url) = Url::parse(&with_scheme) {
-        return InputType::FullUrl(url);
+        if url.host_str().map_or(false, |h| h.contains('.')) {
+            return InputType::FullUrl(url);
+        }
     }
 
     InputType::FuzzyPattern(address.split('/').map(String::from).collect())
