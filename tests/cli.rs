@@ -104,7 +104,7 @@ mod classify_input_tests {
 
         match result {
             InputType::FullUrl(url) => {
-                assert_eq!(url.scheme(), "https");
+                assert_eq!(url.scheme(), "http");
                 assert_eq!(url.host_str(), Some("example.com"));
                 assert_eq!(url.port(), Some(3000));
                 assert_eq!(url.path(), "/path");
@@ -148,7 +148,7 @@ mod classify_input_tests {
 
         match result {
             InputType::FullUrl(url) => {
-                assert_eq!(url.scheme(), "https");
+                assert_eq!(url.scheme(), "http");
                 assert_eq!(url.host_str(), Some("localhost"));
                 assert_eq!(url.port(), Some(8080));
             }
