@@ -9,6 +9,7 @@ struct Cli {
     verbosity: clap_verbosity_flag::Verbosity,
 }
 
+#[derive(Debug)]
 enum InputType {
     FullUrl(Url),
     FuzzyPattern(Vec<String>),
@@ -38,7 +39,9 @@ fn main() -> Result<()> {
         anyhow::bail!("provided address must be a non-empty string");
     }
 
-    println!("Hello, world!");
+    let parsed = classify_input(&args.address);
+
+    println!("parsed: {:?}", &parsed);
 
     Ok(())
 }
