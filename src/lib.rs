@@ -1,3 +1,7 @@
+use anyhow::Result;
+use clap::Subcommand;
+use log::debug;
+use open;
 use url::Url;
 
 #[derive(Debug, PartialEq)]
@@ -35,4 +39,39 @@ pub fn classify_input(address: &str) -> InputType {
             .map(|s| s.to_lowercase())
             .collect(),
     )
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ConfigAction {
+    Set { key: String, value: String },
+    Get { key: String },
+    Path,
+}
+
+pub fn handle_open(address: &str, preferred_browser: Option<&str>) -> anyhow::Result<()> {
+    if address.is_empty() {
+        anyhow::bail!("provided address must be a non-empty string");
+    }
+
+    let parsed = classify_input(&address);
+    match parsed {
+        InputType::FullUrl(url) => {
+            debug!("Parsed FullUrl {:?}", &url);
+            match preferred_browser {
+                Some(browser) => {
+                    debug!("Opening link with {:?}", &browser);
+                    open::with(url.as_str(), browser)?
+                }
+                None => open::that(url.as_str())?,
+            }
+        }
+        InputType::FuzzyPattern(_segments) => {
+            anyhow::bail!("Opening links from a fuzzy pattern is not implemented yet!")
+        }
+    }
+    Ok(())
+}
+pub fn handle_config(action: ConfigAction) -> Result<()> {
+    debug!("Received config action: {:?}", &action);
+    anyhow::bail!("Config command is not implemented yet!")
 }
