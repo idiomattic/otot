@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use confy;
-use log::info;
+use log::debug;
 use open;
 use serde::{Deserialize, Serialize};
 use zurl::{InputType, classify_input};
@@ -34,9 +34,12 @@ fn main() -> Result<()> {
     let parsed = classify_input(&args.address);
     match parsed {
         InputType::FullUrl(url) => {
-            info!("Parsed FullUrl {:?}, opening directly", &url);
+            debug!("Parsed FullUrl {:?}", &url);
             match cfg.preferred_browser {
-                Some(browser) => open::with(url.as_str(), browser)?,
+                Some(browser) => {
+                    debug!("Opening link with {:?}", &browser);
+                    open::with(url.as_str(), browser)?
+                }
                 None => open::that(url.as_str())?,
             }
         }
