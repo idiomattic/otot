@@ -61,6 +61,25 @@ fn open_url(url: &str, browser: Option<&str>) -> std::io::Result<()> {
     }
 }
 
+fn handle_open_impl<F>(address: &str, preferred_browser: Option<&str>, opener: F) -> Result<()>
+where
+    F: Fn(&str, Option<&str>) -> std::io::Result<()>,
+{
+    if address.is_empty() {
+        anyhow::bail!("provided address must be a non-empty string");
+    }
+
+    match classify_input(address) {
+        InputType::FullUrl(url) => {
+            opener(url.as_str(), preferred_browser)?;
+            Ok(())
+        }
+        InputType::FuzzyPattern(_segments) => {
+            anyhow::bail!("Opening links from a fuzzy pattern is not implemented yet!")
+        }
+    }
+}
+
 pub fn handle_open(address: &str, preferred_browser: Option<&str>) -> anyhow::Result<()> {
     if address.is_empty() {
         anyhow::bail!("provided address must be a non-empty string");
