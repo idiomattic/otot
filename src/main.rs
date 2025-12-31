@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
-use zurl::{ConfigAction, ZurlConfig, handle_config_action, open_address_impl, open_url};
+use zurl::{
+    BrowserOpener, ConfigAction, SystemBrowserOpener, ZurlConfig, handle_config_action,
+    open_address_impl, open_url,
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -26,7 +29,7 @@ enum Command {
 #[derive(Default)]
 struct AppBuilder {
     config: Option<ZurlConfig>,
-    opener: Option<Box<dyn Fn(&str, Option<&str>) -> std::io::Result<()>>>,
+    opener: Option<Box<dyn BrowserOpener>>,
 }
 
 impl AppBuilder {
@@ -37,9 +40,9 @@ impl AppBuilder {
     }
 
     #[cfg(test)]
-    fn with_opener<F>(mut self, opener: F) -> Self
+    fn with_opener<O>(mut self, opener: O) -> Self
     where
-        F: Fn(&str, Option<&str>) -> std::io::Result<()> + 'static,
+        O: BrowserOpener + 'static,
     {
         self.opener = Some(Box::new(opener));
         self
@@ -51,7 +54,7 @@ impl AppBuilder {
             None => confy::load("zurl", None).context("Failed to load config in builder")?,
         };
 
-        let opener = self.opener.unwrap_or_else(|| Box::new(open_url));
+        let opener = self.opener.unwrap_or_else(|| Box::new(SystemBrowserOpener));
 
         Ok(App { config, opener })
     }
@@ -61,7 +64,7 @@ struct App {
     config: ZurlConfig,
     // Box gives us a fixed-size pointer to the dynamic function
     // compiler needs to know the size of this struct, so we can't use the dynamic function without wrapping
-    opener: Box<dyn Fn(&str, Option<&str>) -> std::io::Result<()>>,
+    opener: Box<dyn BrowserOpener>,
     // db connection, etc.
 }
 
@@ -76,7 +79,7 @@ impl App {
 
     fn handle_open(&self, address: &str) -> Result<()> {
         open_address_impl(
-            &*self.opener,
+            self.opener.as_ref(),
             address,
             self.config.preferred_browser.as_deref(),
         )
@@ -109,18 +112,26 @@ mod tests {
     use super::*;
     use std::cell::RefCell;
     use std::rc::Rc;
+
+    struct MockOpener {
+        captured: Rc<RefCell<Option<(String, Option<String>)>>>,
+    }
+
+    impl BrowserOpener for MockOpener {
+        fn open(&self, url: &str, browser: Option<&str>) -> std::io::Result<()> {
+            *self.captured.borrow_mut() = Some((url.to_string(), browser.map(String::from)));
+            Ok(())
+        }
+    }
+
     #[test]
     fn app_opens_url_with_mock_opener() {
         let captured = Rc::new(RefCell::new(None));
-        let captured_clone = captured.clone();
-        let mock_opener = move |url: &str, browser: Option<&str>| {
-            *captured_clone.borrow_mut() = Some((url.to_string(), browser.map(String::from)));
-            Ok(())
+        let mock = MockOpener {
+            captured: captured.clone(),
         };
-        let app = AppBuilder::default()
-            .with_opener(mock_opener)
-            .build()
-            .unwrap();
+
+        let app = AppBuilder::default().with_opener(mock).build().unwrap();
         app.handle_open("github.com").unwrap();
         assert_eq!(
             *captured.borrow(),
@@ -130,18 +141,17 @@ mod tests {
     #[test]
     fn app_uses_preferred_browser_from_config() {
         let captured = Rc::new(RefCell::new(None));
-        let captured_clone = captured.clone();
-        let mock_opener = move |url: &str, browser: Option<&str>| {
-            *captured_clone.borrow_mut() = Some((url.to_string(), browser.map(String::from)));
-            Ok(())
+        let mock = MockOpener {
+            captured: captured.clone(),
         };
+
         let config = ZurlConfig {
             preferred_browser: Some("firefox".to_string()),
         };
 
         let app = AppBuilder::default()
             .with_config(config)
-            .with_opener(mock_opener)
+            .with_opener(mock)
             .build()
             .unwrap();
         app.handle_open("github.com").unwrap();

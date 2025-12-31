@@ -54,6 +54,17 @@ pub enum ConfigAction {
     Path,
 }
 
+pub trait BrowserOpener {
+    fn open(&self, url: &str, browser: Option<&str>) -> std::io::Result<()>;
+}
+
+pub struct SystemBrowserOpener;
+impl BrowserOpener for SystemBrowserOpener {
+    fn open(&self, url: &str, browser: Option<&str>) -> std::io::Result<()> {
+        open_url(url, browser)
+    }
+}
+
 pub fn open_url(url: &str, browser: Option<&str>) -> std::io::Result<()> {
     match browser {
         Some(b) => {
@@ -67,27 +78,24 @@ pub fn open_url(url: &str, browser: Option<&str>) -> std::io::Result<()> {
     }
 }
 
-pub fn open_address_impl<F>(opener: F, address: &str, preferred_browser: Option<&str>) -> Result<()>
-where
-    F: Fn(&str, Option<&str>) -> std::io::Result<()>,
-{
+pub fn open_address_impl(
+    opener: &dyn BrowserOpener,
+    address: &str,
+    preferred_browser: Option<&str>,
+) -> Result<()> {
     if address.is_empty() {
         anyhow::bail!("provided address must be a non-empty string");
     }
 
     match classify_input(address) {
         InputType::FullUrl(url) => {
-            opener(url.as_str(), preferred_browser)?;
+            opener.open(url.as_str(), preferred_browser)?;
             Ok(())
         }
         InputType::FuzzyPattern(_segments) => {
             anyhow::bail!("Opening links from a fuzzy pattern is not implemented yet!")
         }
     }
-}
-
-pub fn handle_open_address(address: &str, preferred_browser: Option<&str>) -> anyhow::Result<()> {
-    open_address_impl(open_url, address, preferred_browser)
 }
 
 #[cfg(test)]
