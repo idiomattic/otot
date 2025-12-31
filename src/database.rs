@@ -74,7 +74,7 @@ fn get_last_segment(segments: &[String]) -> Option<String> {
     segments.last().cloned()
 }
 
-fn segments_match_pattern(url_segments: &[String], pattern: &[String]) -> bool {
+fn does_pattern_match_segments(url_segments: &[String], pattern: &[String]) -> bool {
     if pattern.is_empty() {
         return true;
     }
@@ -106,4 +106,115 @@ fn segments_match_pattern(url_segments: &[String], pattern: &[String]) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn to_strings(slice: &[&str]) -> Vec<String> {
+        slice.iter().map(|s| s.to_string()).collect()
+    }
+    // Category 1: First Segment Rule
+    #[test]
+    fn first_segment_matches() {
+        let url_segments = to_strings(&["github", "rust", "issues"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn first_segment_does_not_match() {
+        let url_segments = to_strings(&["gitlab", "rust", "issues"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    // Category 2: Last Segment Rule
+    #[test]
+    fn last_segment_matches() {
+        let url_segments = to_strings(&["github", "rust", "issues"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn last_segment_does_not_match() {
+        let url_segments = to_strings(&["github", "rust", "pulls"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn pattern_last_segment_appears_in_middle_of_url() {
+        let url_segments = to_strings(&["github", "issues", "rust"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    // Category 3: Ordering with Gaps
+    #[test]
+    fn all_pattern_segments_present_in_order_with_gaps() {
+        let url_segments = to_strings(&["github", "microsoft", "rust", "foo", "bar", "issues"]);
+        let pattern = to_strings(&["github", "rust", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn all_pattern_segments_present_but_out_of_order() {
+        let url_segments = to_strings(&["github", "issues", "rust"]);
+        let pattern = to_strings(&["github", "rust", "issues"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn pattern_segments_appear_multiple_times() {
+        let url_segments = to_strings(&["github", "rust", "microsoft", "rust", "issues"]);
+        let pattern = to_strings(&["github", "rust", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn no_gaps_needed_consecutive_segments() {
+        let url_segments = to_strings(&["github", "rust", "issues"]);
+        let pattern = to_strings(&["github", "rust", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn single_gap_between_segments() {
+        let url_segments = to_strings(&["github", "foo", "issues"]);
+        let pattern = to_strings(&["github", "issues"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    // Category 4: Single Segment Patterns
+    #[test]
+    fn single_segment_pattern_matching_single_segment_url() {
+        let url_segments = to_strings(&["github"]);
+        let pattern = to_strings(&["github"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn single_segment_pattern_multi_segment_url() {
+        let url_segments = to_strings(&["github", "rust"]);
+        let pattern = to_strings(&["github"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn single_segment_pattern_matches_both_first_and_last() {
+        let url_segments = to_strings(&["github"]);
+        let pattern = to_strings(&["github"]);
+        assert!(does_pattern_match_segments(&url_segments, &pattern));
+    }
+    // Category 5: Missing Pattern Segments
+    #[test]
+    fn middle_pattern_segment_missing_from_url() {
+        let url_segments = to_strings(&["github", "issues"]);
+        let pattern = to_strings(&["github", "rust", "issues"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    #[test]
+    fn pattern_longer_than_url() {
+        let url_segments = to_strings(&["github", "rust"]);
+        let pattern = to_strings(&["github", "foo", "bar", "rust"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
+    // Category 6: Edge Cases
+    #[test]
+    fn url_has_no_segments() {
+        let url_segments: Vec<String> = vec![];
+        let pattern = to_strings(&["github"]);
+        assert!(!does_pattern_match_segments(&url_segments, &pattern));
+    }
 }
