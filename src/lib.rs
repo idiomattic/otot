@@ -61,7 +61,7 @@ fn open_url(url: &str, browser: Option<&str>) -> std::io::Result<()> {
     }
 }
 
-fn handle_open_impl<F>(address: &str, preferred_browser: Option<&str>, opener: F) -> Result<()>
+fn open_address_impl<F>(address: &str, preferred_browser: Option<&str>, opener: F) -> Result<()>
 where
     F: Fn(&str, Option<&str>) -> std::io::Result<()>,
 {
@@ -80,8 +80,8 @@ where
     }
 }
 
-pub fn handle_open(address: &str, preferred_browser: Option<&str>) -> anyhow::Result<()> {
-    handle_open_impl(address, preferred_browser, open_url)
+pub fn handle_open_address(address: &str, preferred_browser: Option<&str>) -> anyhow::Result<()> {
+    open_address_impl(address, preferred_browser, open_url)
 }
 
 #[cfg(test)]
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn empty_address_returns_error() {
         let mock = |_: &str, _: Option<&str>| Ok(());
-        let result = handle_open_impl("", None, mock);
+        let result = open_address_impl("", None, mock);
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("non-empty"));
@@ -107,7 +107,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("https://github.com/rust-lang/rust", None, mock).unwrap();
+        open_address_impl("https://github.com/rust-lang/rust", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -124,7 +124,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("github.com/rust-lang", None, mock).unwrap();
+        open_address_impl("github.com/rust-lang", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -141,7 +141,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("localhost:8080/api", None, mock).unwrap();
+        open_address_impl("localhost:8080/api", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -158,7 +158,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("https://github.com", Some("firefox"), mock).unwrap();
+        open_address_impl("https://github.com", Some("firefox"), mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -178,7 +178,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("github.com/rust", Some("safari"), mock).unwrap();
+        open_address_impl("github.com/rust", Some("safari"), mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -198,7 +198,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("example.com/search?q=rust&page=2", None, mock).unwrap();
+        open_address_impl("example.com/search?q=rust&page=2", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -215,7 +215,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("example.com/page#section", None, mock).unwrap();
+        open_address_impl("example.com/page#section", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -232,7 +232,7 @@ mod tests {
             Ok(())
         };
 
-        handle_open_impl("github.com/search?q=rust#results", None, mock).unwrap();
+        open_address_impl("github.com/search?q=rust#results", None, mock).unwrap();
 
         assert_eq!(
             *captured.borrow(),
@@ -249,7 +249,7 @@ mod tests {
             Ok(())
         };
 
-        let result = handle_open_impl("github/rust/issues", None, mock);
+        let result = open_address_impl("github/rust/issues", None, mock);
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not implemented"));
@@ -259,7 +259,7 @@ mod tests {
     }
 }
 
-pub fn handle_config(action: ConfigAction) -> Result<()> {
+pub fn handle_config_action(action: ConfigAction) -> Result<()> {
     debug!("Received config action: {:?}", &action);
     anyhow::bail!("Config command is not implemented yet!")
 }

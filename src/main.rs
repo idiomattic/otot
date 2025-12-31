@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
 use serde::{Deserialize, Serialize};
-use zurl::{ConfigAction, handle_config, handle_open};
+use zurl::{ConfigAction, handle_config_action, handle_open_address};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ZurlConfig {
@@ -29,6 +29,27 @@ enum Command {
     },
 }
 
+struct App {
+    config: ZurlConfig,
+    // db connection, etc.
+    // logger?
+}
+
+impl App {
+    fn new() -> Result<Self> {
+        let config = confy::load("zurl", None).context("Failed to load configuration")?;
+        Ok(Self { config })
+    }
+
+    fn handle_open(&self, address: &str) -> Result<()> {
+        handle_open_address(address, self.config.preferred_browser.as_deref())
+    }
+
+    fn handle_config(&self, action: ConfigAction) -> Result<()> {
+        handle_config_action(action)
+    }
+}
+
 fn main() -> Result<()> {
     let args = Cli::parse();
 
@@ -36,11 +57,12 @@ fn main() -> Result<()> {
         .filter_level(args.verbosity.into())
         .init();
 
-    let cfg: ZurlConfig = confy::load("zurl", None).context("Failed to load configuration")?;
+    let app = App::new()?;
 
     match args.command {
-        Command::Open { address } => handle_open(&address, cfg.preferred_browser.as_deref())?,
-        Command::Config { action } => handle_config(action)?,
+        Command::Open { address } => app.handle_open(&address)?,
+        Command::Config { action } => app.handle_config(action)?,
     }
+
     Ok(())
 }
