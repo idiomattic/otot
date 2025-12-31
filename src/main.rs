@@ -113,11 +113,11 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    struct MockOpener {
-        captured: Rc<RefCell<Option<(String, Option<String>)>>>,
+    pub struct MockBrowserOpener {
+        pub captured: std::rc::Rc<std::cell::RefCell<Option<(String, Option<String>)>>>,
     }
 
-    impl BrowserOpener for MockOpener {
+    impl BrowserOpener for MockBrowserOpener {
         fn open(&self, url: &str, browser: Option<&str>) -> std::io::Result<()> {
             *self.captured.borrow_mut() = Some((url.to_string(), browser.map(String::from)));
             Ok(())
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn app_opens_url_with_mock_opener() {
         let captured = Rc::new(RefCell::new(None));
-        let mock = MockOpener {
+        let mock = MockBrowserOpener {
             captured: captured.clone(),
         };
 
@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn app_uses_preferred_browser_from_config() {
         let captured = Rc::new(RefCell::new(None));
-        let mock = MockOpener {
+        let mock = MockBrowserOpener {
             captured: captured.clone(),
         };
 
