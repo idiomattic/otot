@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
 use serde::{Deserialize, Serialize};
@@ -52,9 +52,10 @@ impl AppBuilder {
     }
 
     fn build(self) -> Result<App> {
-        let config = self.config.unwrap_or_else(|| {
-            confy::load("zurl", None).expect("Failed to load config in builder")
-        });
+        let config = match self.config {
+            Some(c) => c,
+            None => confy::load("zurl", None).context("Failed to load config in builder")?,
+        };
 
         let opener = self.opener.unwrap_or_else(|| Box::new(open_url));
 
