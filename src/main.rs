@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use confy;
 use zurl::{
     BrowserOpener, ConfigAction, SystemBrowserOpener, ZurlConfig, handle_config_action,
-    open_address_impl, open_url,
+    open_address_impl,
 };
 
 #[derive(Parser)]
