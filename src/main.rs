@@ -36,11 +36,13 @@ struct AppBuilder {
 }
 
 impl AppBuilder {
+    #[cfg(test)]
     fn with_config(mut self, config: ZurlConfig) -> Self {
         self.config = Some(config);
         self
     }
 
+    #[cfg(test)]
     fn with_opener<F>(mut self, opener: F) -> Self
     where
         F: Fn(&str, Option<&str>) -> std::io::Result<()> + 'static,
