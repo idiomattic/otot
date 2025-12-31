@@ -3,7 +3,7 @@ mod database;
 mod url_classify;
 
 pub use browser::{BrowserOpener, SystemBrowserOpener, open_address_impl};
-// pub use database::{Database, SqliteDatabase};
+pub use database::{Database, SqliteDatabase};
 pub use url_classify::{InputType, classify_input};
 
 use anyhow::Result;
