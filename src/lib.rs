@@ -2,7 +2,13 @@ use anyhow::Result;
 use clap::Subcommand;
 use log::debug;
 use open;
+use serde::{Deserialize, Serialize};
 use url::Url;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ZurlConfig {
+    pub preferred_browser: Option<String>,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum InputType {

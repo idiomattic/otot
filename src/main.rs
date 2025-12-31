@@ -1,13 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
-use serde::{Deserialize, Serialize};
-use zurl::{ConfigAction, handle_config_action, open_address_impl, open_url};
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct ZurlConfig {
-    preferred_browser: Option<String>,
-}
+use zurl::{ConfigAction, ZurlConfig, handle_config_action, open_address_impl, open_url};
 
 #[derive(Parser)]
 struct Cli {
