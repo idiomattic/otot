@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
 use serde::{Deserialize, Serialize};
-use zurl::{ConfigAction, handle_config_action, handle_open_address};
+use zurl::{ConfigAction, handle_config_action, open_address_impl, open_url};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ZurlConfig {
@@ -31,18 +31,25 @@ enum Command {
 
 struct App {
     config: ZurlConfig,
+    opener: Box<dyn Fn(&str, Option<&str>) -> std::io::Result<()>>,
     // db connection, etc.
-    // logger?
 }
 
 impl App {
     fn new() -> Result<Self> {
         let config = confy::load("zurl", None).context("Failed to load configuration")?;
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            opener: Box::new(open_url),
+        })
     }
 
     fn handle_open(&self, address: &str) -> Result<()> {
-        handle_open_address(address, self.config.preferred_browser.as_deref())
+        open_address_impl(
+            &*self.opener,
+            address,
+            self.config.preferred_browser.as_deref(),
+        )
     }
 
     fn handle_config(&self, action: ConfigAction) -> Result<()> {
