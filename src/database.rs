@@ -53,7 +53,9 @@ impl SqliteDatabase {
 
         Ok(app_dir.join("history.db"))
     }
+}
 
+impl Database for SqliteDatabase {
     fn add_visit(&mut self, url: &str, timestamp: SystemTime) -> Result<()> {
         let segments = extract_segments(url)?;
         let last_segment = get_last_segment(&segments).unwrap_or_default();
@@ -70,6 +72,13 @@ impl SqliteDatabase {
         )?;
 
         Ok(())
+    }
+
+    fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<String>> {
+        todo!()
+    }
+    fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>> {
+        todo!()
     }
 }
 

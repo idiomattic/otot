@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
 use zurl::{
-    BrowserOpener, ConfigAction, SystemBrowserOpener, ZurlConfig, handle_config_action,
-    open_address_impl,
+    BrowserOpener, ConfigAction, Database, SqliteDatabase, SystemBrowserOpener, ZurlConfig,
+    handle_config_action, open_address_impl,
 };
 
 #[derive(Parser)]
@@ -30,6 +30,7 @@ enum Command {
 struct AppBuilder {
     config: Option<ZurlConfig>,
     opener: Option<Box<dyn BrowserOpener>>,
+    db: Option<Box<dyn Database>>,
 }
 
 impl AppBuilder {
@@ -56,16 +57,19 @@ impl AppBuilder {
 
         let opener = self.opener.unwrap_or_else(|| Box::new(SystemBrowserOpener));
 
-        Ok(App { config, opener })
+        let db = self
+            .db
+            .unwrap_or_else(|| Box::new(SqliteDatabase::open().expect("Failed to open database")));
+
+        Ok(App { config, opener, db })
     }
 }
 
 struct App {
     config: ZurlConfig,
-    // Box gives us a fixed-size pointer to the dynamic function
-    // compiler needs to know the size of this struct, so we can't use the dynamic function without wrapping
+    // Box gives us a fixed-size pointer to the dynamic trait - compiler needs to know size
     opener: Box<dyn BrowserOpener>,
-    // db connection, etc.
+    db: Box<dyn Database>,
 }
 
 impl App {
@@ -77,9 +81,10 @@ impl App {
         Self::builder().build()
     }
 
-    fn handle_open(&self, address: &str) -> Result<()> {
+    fn handle_open(&mut self, address: &str) -> Result<()> {
         open_address_impl(
             self.opener.as_ref(),
+            self.db.as_mut(),
             address,
             self.config.preferred_browser.as_deref(),
         )
@@ -97,7 +102,7 @@ fn main() -> Result<()> {
         .filter_level(args.verbosity.into())
         .init();
 
-    let app = App::new()?;
+    let mut app = App::new()?;
 
     match args.command {
         Command::Open { address } => app.handle_open(&address)?,
@@ -131,7 +136,7 @@ mod tests {
             captured: captured.clone(),
         };
 
-        let app = AppBuilder::default().with_opener(mock).build().unwrap();
+        let mut app = AppBuilder::default().with_opener(mock).build().unwrap();
         app.handle_open("github.com").unwrap();
         assert_eq!(
             *captured.borrow(),
@@ -149,7 +154,7 @@ mod tests {
             preferred_browser: Some("firefox".to_string()),
         };
 
-        let app = AppBuilder::default()
+        let mut app = AppBuilder::default()
             .with_config(config)
             .with_opener(mock)
             .build()
