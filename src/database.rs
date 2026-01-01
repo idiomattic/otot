@@ -113,8 +113,8 @@ impl Database for SqliteDatabase {
         Ok(matches.into_iter().map(|(url, _)| url).collect())
     }
 
-    fn get_best_match(&self, _pattern: &[String]) -> Result<Option<String>> {
-        todo!()
+    fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>> {
+        Ok(self.fuzzy_match(pattern)?.into_iter().next())
     }
 }
 
