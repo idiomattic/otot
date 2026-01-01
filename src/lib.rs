@@ -8,7 +8,7 @@ pub use url_classify::{InputType, classify_input};
 
 use anyhow::{Context, Result};
 use clap::Subcommand;
-use log::{debug, info};
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -18,8 +18,17 @@ pub struct ZurlConfig {
 
 #[derive(Subcommand, Debug)]
 pub enum ConfigAction {
-    Set { key: String, value: String },
-    Get { key: String },
+    Set {
+        #[arg(short, long)]
+        key: String,
+
+        #[arg(short, long)]
+        value: String,
+    },
+    Get {
+        #[arg(short, long)]
+        key: String,
+    },
     Path,
 }
 
