@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::debug;
 use rusqlite::{Connection, params};
 use serde_json;
 use std::path::PathBuf;
@@ -24,12 +25,14 @@ impl SqliteDatabase {
     pub fn open_at(path: &std::path::Path) -> Result<Self> {
         let conn = Connection::open(path).context("Failed to open database")?;
 
+        debug!("Connected to Database");
         let db = Self { conn };
         db.initialize_schema()?;
         Ok(db)
     }
 
     fn initialize_schema(&self) -> Result<()> {
+        debug!("Initializing Database schema");
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS urls (
                 id INTEGER PRIMARY KEY,
@@ -62,6 +65,8 @@ impl Database for SqliteDatabase {
         let segments_json = serde_json::to_string(&segments)?;
         let timestamp_secs = timestamp.duration_since(SystemTime::UNIX_EPOCH)?.as_secs() as i64;
 
+        debug!("Recording history record for {:?}", url);
+
         self.conn.execute(
             "INSERT INTO urls (full_url, segments, last_segment, score, last_accessed)
                   VALUES (?1, ?2, ?3, 1.0, ?4)
@@ -86,6 +91,8 @@ impl Database for SqliteDatabase {
                  WHERE last_segment = ?1 COLLATE NOCASE",
         )?;
 
+        debug!("Querying for match on last-segment: {:?}", last_segment);
+
         let rows = stmt.query_map([last_segment], |row| {
             Ok((
                 row.get::<_, String>(0)?, // full_url
@@ -96,8 +103,10 @@ impl Database for SqliteDatabase {
         })?;
 
         let mut matches: Vec<(String, f64)> = Vec::new();
+        let mut row_count: u64 = 0;
 
         for row in rows {
+            row_count += 1;
             let (url, segments_json, score, last_accessed) = row?;
 
             let url_segments: Vec<String> = serde_json::from_str(&segments_json)?;
@@ -107,6 +116,9 @@ impl Database for SqliteDatabase {
                 matches.push((url, frecency));
             }
         }
+
+        debug!("{:?} records matched on last segment", row_count);
+        debug!("{:?} records fully matched", matches.len());
 
         matches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
@@ -141,6 +153,8 @@ fn extract_segments(url_str: &str) -> Result<Vec<String>> {
                 .map(|s| s.to_lowercase()),
         );
     }
+
+    debug!("Extracted segments from {:?}: {:?}", url.as_str(), segments);
 
     Ok(segments)
 }
