@@ -75,9 +75,45 @@ impl Database for SqliteDatabase {
     }
 
     fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<String>> {
-        todo!()
+        if pattern.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let last_segment = pattern.last().unwrap();
+        let mut stmt = self.conn.prepare(
+            "SELECT full_url, segments, score, last_accessed
+                 FROM urls
+                 WHERE last_segment = ?1 COLLATE NOCASE",
+        )?;
+
+        let rows = stmt.query_map([last_segment], |row| {
+            Ok((
+                row.get::<_, String>(0)?, // full_url
+                row.get::<_, String>(1)?, // segments JSON
+                row.get::<_, f64>(2)?,    // score
+                row.get::<_, i64>(3)?,    // last_accessed
+            ))
+        })?;
+
+        let mut matches: Vec<(String, f64)> = Vec::new();
+
+        for row in rows {
+            let (url, segments_json, score, last_accessed) = row?;
+
+            let url_segments: Vec<String> = serde_json::from_str(&segments_json)?;
+
+            if does_pattern_match_segments(&url_segments, pattern) {
+                let frecency = calculate_frecency(score, last_accessed);
+                matches.push((url, frecency));
+            }
+        }
+
+        matches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        Ok(matches.into_iter().map(|(url, _)| url).collect())
     }
-    fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>> {
+
+    fn get_best_match(&self, _pattern: &[String]) -> Result<Option<String>> {
         todo!()
     }
 }
