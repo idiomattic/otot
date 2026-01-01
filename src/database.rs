@@ -569,4 +569,89 @@ mod tests {
 
         assert_eq!(count, 3);
     }
+
+    // fuzzy_match
+    #[test]
+    fn fuzzy_match_returns_matching_urls() {
+        let (_temp_dir, mut db) = create_test_db();
+
+        // Add some URLs - make sure they end with "rust"
+        db.add_visit("https://github.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/microsoft/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://gitlab.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+
+        // Search for pattern ending in "rust"
+        let matches = db
+            .fuzzy_match(&["github".to_string(), "rust".to_string()])
+            .unwrap();
+
+        // Should match the two github URLs (not gitlab, because first segment doesn't match)
+        assert_eq!(matches.len(), 2);
+        assert!(matches.iter().any(|u| u.contains("rust-lang")));
+        assert!(matches.iter().any(|u| u.contains("microsoft")));
+    }
+    #[test]
+    fn fuzzy_match_respects_segment_order() {
+        let (_temp_dir, mut db) = create_test_db();
+
+        db.add_visit("https://github.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/rust/issues", SystemTime::now())
+            .unwrap(); // Different structure
+
+        // Pattern: github -> rust-lang -> rust
+        let matches = db
+            .fuzzy_match(&[
+                "github".to_string(),
+                "rust-lang".to_string(),
+                "rust".to_string(),
+            ])
+            .unwrap();
+
+        // Should only match the first URL
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0], "https://github.com/rust-lang/rust");
+    }
+    #[test]
+    fn fuzzy_match_sorts_by_frecency() {
+        let (_temp_dir, mut db) = create_test_db();
+
+        let old_time = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1000);
+        let recent_time = SystemTime::now();
+
+        // Add URL visited long ago with high score - ending in "rust"
+        db.add_visit("https://github.com/old/rust", old_time)
+            .unwrap();
+        db.add_visit("https://github.com/old/rust", old_time)
+            .unwrap();
+        db.add_visit("https://github.com/old/rust", old_time)
+            .unwrap();
+
+        // Add URL visited recently with lower score - also ending in "rust"
+        db.add_visit("https://github.com/new/rust", recent_time)
+            .unwrap();
+
+        let matches = db
+            .fuzzy_match(&["github".to_string(), "rust".to_string()])
+            .unwrap();
+
+        // Recent URL should come first due to recency boost
+        assert_eq!(matches[0], "https://github.com/new/rust");
+    }
+    #[test]
+    fn fuzzy_match_returns_empty_for_no_matches() {
+        let (_temp_dir, mut db) = create_test_db();
+
+        db.add_visit("https://github.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+
+        let matches = db
+            .fuzzy_match(&["gitlab".to_string(), "foo".to_string()])
+            .unwrap();
+
+        assert_eq!(matches.len(), 0);
+    }
 }
