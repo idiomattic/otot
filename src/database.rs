@@ -121,15 +121,26 @@ impl Database for SqliteDatabase {
 fn extract_segments(url_str: &str) -> Result<Vec<String>> {
     let url = Url::parse(url_str).context("Failed to parse URL")?;
 
-    let segments: Vec<String> = url
-        .path_segments()
-        .map(|segments| {
-            segments
+    let mut segments: Vec<String> = Vec::new();
+
+    if let Some(domain) = url.domain() {
+        let domain_parts: Vec<&str> = domain.split('.').collect();
+        if domain_parts.len() >= 2 {
+            // Use second-to-last part (e.g., "github" from "github.com" or "api.github.com")
+            segments.push(domain_parts[domain_parts.len() - 2].to_lowercase());
+        } else if domain_parts.len() == 1 {
+            // Edge case: just "localhost" or single-word domain
+            segments.push(domain_parts[0].to_lowercase());
+        }
+    }
+
+    if let Some(path_segments) = url.path_segments() {
+        segments.extend(
+            path_segments
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_lowercase())
-                .collect()
-        })
-        .unwrap_or_default();
+                .map(|s| s.to_lowercase()),
+        );
+    }
 
     Ok(segments)
 }
