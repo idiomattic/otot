@@ -132,7 +132,7 @@ mod config_tests {
         handle_config_action_with_config(
             ConfigAction::Set {
                 key: "preferred_browser".to_string(),
-                value: "firefox".to_string(),
+                new: "firefox".to_string(),
             },
             Some(&config_path),
         )
@@ -157,7 +157,7 @@ mod config_tests {
         handle_config_action_with_config(
             ConfigAction::Set {
                 key: "preferred_browser".to_string(),
-                value: "firefox".to_string(),
+                new: "firefox".to_string(),
             },
             Some(&config_path),
         )
@@ -166,7 +166,7 @@ mod config_tests {
         handle_config_action_with_config(
             ConfigAction::Set {
                 key: "preferred_browser".to_string(),
-                value: "".to_string(),
+                new: "".to_string(),
             },
             Some(&config_path),
         )
@@ -203,7 +203,7 @@ mod config_tests {
         let result = handle_config_action_with_config(
             ConfigAction::Set {
                 key: "nonexistent_key".to_string(),
-                value: "some_value".to_string(),
+                new: "some_value".to_string(),
             },
             Some(&config_path),
         );

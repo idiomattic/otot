@@ -213,16 +213,4 @@ mod tests {
             Some(("https://github.com/search?q=rust#results".to_string(), None))
         );
     }
-
-    #[test]
-    fn fuzzy_pattern_returns_error() {
-        let (mock, captured) = create_mock();
-        let (_temp_dir, mut db) = create_temp_db();
-
-        let result = open_address_impl(&mock, &mut db, "github/rust/issues", None);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not implemented"));
-        // Verify opener was never called
-        assert_eq!(*captured.borrow(), None);
-    }
 }
