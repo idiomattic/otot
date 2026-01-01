@@ -172,6 +172,27 @@ fn does_pattern_match_segments(url_segments: &[String], pattern: &[String]) -> b
     true
 }
 
+fn calculate_frecency(score: f64, last_accessed: i64) -> f64 {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    let seconds_ago = now - last_accessed;
+
+    let multiplier = if seconds_ago < 3600 {
+        4.0
+    } else if seconds_ago < 86400 {
+        2.0
+    } else if seconds_ago < 604800 {
+        0.5
+    } else {
+        0.25
+    };
+
+    score * multiplier
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
