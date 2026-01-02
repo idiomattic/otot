@@ -93,5 +93,10 @@ The database stores visit counts and timestamps but no personal browsing data be
 ## Inspiration
 This project is heavily inspired by [zoxide](https://github.com/ajeetdsouza/zoxide), a wonderful CLI for navigating between directories.
 
+## Roadmap
+- [ ] `prune` subcommand to remove records past a certain age
+- [ ] `query` subcommand to list matches with their frecency scores, for debugging
+- [ ] `stats` subcommand to print recent or highest activity
+
 ## License
 MIT
