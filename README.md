@@ -7,6 +7,13 @@ A command-line tool for quickly opening URLs with fuzzy matching and frecency-ba
 `otot` ("Open Tab Over There") helps you quickly open links from your terminal by remembering each usage and allowing fuzzy pattern matching. Instead of typing full URLs, use partial matches to quickly access your most frequently and recently visited sites.
 
 ### Installation
+
+Via Homebrew (macOS/Linux)
+```bash
+brew tap idiomattic/otot
+brew install otot
+```
+Via Cargo
 ```bash
 cargo install otot
 ```
@@ -16,6 +23,14 @@ git clone https://github.com/idiomattic/otot
 cd otot
 cargo install --path .
 ```
+
+> ### Tip
+>
+> Aliasing the `open` subcommand is helpful for ergonomic, quick usage:
+>```bash
+> alias o="otot open"
+>```
+
 ## Usage
 ### Open a full URL
 ```bash
@@ -28,13 +43,6 @@ The tool automatically opens the URL in your default browser.
 otot open github/rust
 ```
 This finds the most relevant URL containing both "github" and "rust" based on your visit history. The ranking uses a frecency algorithm that considers both frequency (how often you visit) and recency (when you last visited).
-
-> Tip:
->
-> Aliasing the `open` subcommand is helpful for ergonomic, quick usage:
->```bash
-> alias o="otot open"
->```
 
 ### Configuration
 Set your preferred browser:
