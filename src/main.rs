@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use confy;
 use otot::{
     BrowserOpener, ConfigAction, Database, OtotConfig, SqliteDatabase, SystemBrowserOpener,
     handle_config_action, open_address_impl,

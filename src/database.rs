@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use log::{debug, info};
 use rusqlite::{Connection, params};
-use serde_json;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use url::Url;
@@ -180,16 +179,16 @@ fn does_pattern_match_segments(url_segments: &[String], pattern: &[String]) -> b
         return true;
     }
 
-    if let (Some(pattern_first), Some(url_first)) = (pattern.first(), url_segments.first()) {
-        if pattern_first != url_first {
-            return false;
-        }
+    if let (Some(pattern_first), Some(url_first)) = (pattern.first(), url_segments.first())
+        && pattern_first != url_first
+    {
+        return false;
     }
 
-    if let (Some(pattern_last), Some(url_last)) = (pattern.last(), url_segments.last()) {
-        if pattern_last != url_last {
-            return false;
-        }
+    if let (Some(pattern_last), Some(url_last)) = (pattern.last(), url_segments.last())
+        && pattern_last != url_last
+    {
+        return false;
     }
 
     let mut url_idx = 0;

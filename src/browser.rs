@@ -1,6 +1,5 @@
 use anyhow::Result;
 use log::debug;
-use open;
 use std::time::SystemTime;
 
 use crate::database::Database;
