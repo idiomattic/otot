@@ -7,6 +7,7 @@ use zurl::{
 };
 
 #[derive(Parser)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
