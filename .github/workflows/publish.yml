@@ -26,8 +26,13 @@ jobs:
 
           homebrew_owner: idiomattic
           homebrew_tap: homebrew-otot
-
           formula_folder: Formula
+
+          homepage: https://github.com/idiomattic/otot
+          description: Fuzzy URL opener for the terminal
+          license: MIT
 
           install: 'system "cargo", "install", *std_cargo_args'
           test: 'assert_match version.to_s, shell_output("#{bin}/otot --version")'
+
+          depends_on: rust => :build
