@@ -12,7 +12,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct ZurlConfig {
+pub struct OtotConfig {
     pub preferred_browser: Option<String>,
 }
 
@@ -41,10 +41,10 @@ pub fn handle_config_action_with_config(
 ) -> Result<()> {
     match action {
         ConfigAction::Get { key } => {
-            let config: ZurlConfig = if let Some(path) = config_path {
+            let config: OtotConfig = if let Some(path) = config_path {
                 confy::load_path(path).context("Failed to load configuration")?
             } else {
-                confy::load("zurl", None).context("Failed to load configuration")?
+                confy::load("otot", None).context("Failed to load configuration")?
             };
 
             match key.as_str() {
@@ -64,10 +64,10 @@ pub fn handle_config_action_with_config(
         }
 
         ConfigAction::Set { key, new } => {
-            let mut config: ZurlConfig = if let Some(path) = config_path {
+            let mut config: OtotConfig = if let Some(path) = config_path {
                 confy::load_path(path).unwrap_or_default()
             } else {
-                confy::load("zurl", None).context("Failed to load configuration")?
+                confy::load("otot", None).context("Failed to load configuration")?
             };
 
             match key.as_str() {
@@ -83,7 +83,7 @@ pub fn handle_config_action_with_config(
                     if let Some(path) = config_path {
                         confy::store_path(path, &config).context("Failed to save configuration")?;
                     } else {
-                        confy::store("zurl", None, &config)
+                        confy::store("otot", None, &config)
                             .context("Failed to save configuration")?;
                     }
 
@@ -108,7 +108,7 @@ pub fn handle_config_action_with_config(
             let config_path_display = if let Some(path) = config_path {
                 path.display().to_string()
             } else {
-                confy::get_configuration_file_path("zurl", None)
+                confy::get_configuration_file_path("otot", None)
                     .context("Failed to get config path")?
                     .display()
                     .to_string()
@@ -138,7 +138,7 @@ mod config_tests {
         )
         .unwrap();
 
-        let config: ZurlConfig = confy::load_path(&config_path).unwrap();
+        let config: OtotConfig = confy::load_path(&config_path).unwrap();
         assert_eq!(config.preferred_browser, Some("firefox".to_string()));
 
         let result = handle_config_action_with_config(
@@ -172,7 +172,7 @@ mod config_tests {
         )
         .unwrap();
 
-        let config: ZurlConfig = confy::load_path(&config_path).unwrap();
+        let config: OtotConfig = confy::load_path(&config_path).unwrap();
         assert_eq!(config.preferred_browser, None);
     }
     #[test]

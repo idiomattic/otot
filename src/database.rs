@@ -51,7 +51,7 @@ impl SqliteDatabase {
 
     fn get_db_path() -> Result<PathBuf> {
         let data_dir = dirs::data_local_dir().context("Could not find local data directory")?;
-        let app_dir = data_dir.join("zurl");
+        let app_dir = data_dir.join("otot");
         std::fs::create_dir_all(&app_dir).context("Failed to create application directory")?;
 
         Ok(app_dir.join("history.db"))

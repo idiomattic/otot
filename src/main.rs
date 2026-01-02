@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use confy;
-use zurl::{
-    BrowserOpener, ConfigAction, Database, SqliteDatabase, SystemBrowserOpener, ZurlConfig,
+use otot::{
+    BrowserOpener, ConfigAction, Database, OtotConfig, SqliteDatabase, SystemBrowserOpener,
     handle_config_action, open_address_impl,
 };
 
@@ -29,14 +29,14 @@ enum Command {
 
 #[derive(Default)]
 struct AppBuilder {
-    config: Option<ZurlConfig>,
+    config: Option<OtotConfig>,
     opener: Option<Box<dyn BrowserOpener>>,
     db: Option<Box<dyn Database>>,
 }
 
 impl AppBuilder {
     #[cfg(test)]
-    fn with_config(mut self, config: ZurlConfig) -> Self {
+    fn with_config(mut self, config: OtotConfig) -> Self {
         self.config = Some(config);
         self
     }
@@ -62,10 +62,10 @@ impl AppBuilder {
     fn build(self) -> Result<App> {
         let config = match self.config {
             Some(c) => c,
-            None => confy::load("zurl", None).context("Failed to load config in builder")?,
+            None => confy::load("otot", None).context("Failed to load config in builder")?,
         };
 
-        // Options because these components aren't required for all subcommands (e.g. `zurl config` does not require either)
+        // Options because these components aren't required for all subcommands (e.g. `otot config` does not require either)
         //  and we can skip the extra overhead from their initialization.
         let opener = self.opener;
         let db = self.db;
@@ -75,7 +75,7 @@ impl AppBuilder {
 }
 
 struct App {
-    config: ZurlConfig,
+    config: OtotConfig,
     // Box gives us a fixed-size pointer to the dynamic trait - compiler needs to know size
     // These are Option so we can avoid initializing them for config commands
     opener: Option<Box<dyn BrowserOpener>>,
@@ -174,7 +174,7 @@ mod tests {
             captured: captured.clone(),
         };
         let mut app = AppBuilder::default()
-            .with_config(ZurlConfig::default())
+            .with_config(OtotConfig::default())
             .with_opener(mock)
             .with_db(MockDatabase)
             .build()
@@ -194,7 +194,7 @@ mod tests {
             captured: captured.clone(),
         };
 
-        let config = ZurlConfig {
+        let config = OtotConfig {
             preferred_browser: Some("firefox".to_string()),
         };
 
@@ -223,7 +223,7 @@ mod tests {
     fn config_commands_dont_initialize_db_or_opener() {
         // Build an app without providing db or opener
         let app = AppBuilder::default()
-            .with_config(ZurlConfig::default())
+            .with_config(OtotConfig::default())
             .build()
             .unwrap();
 
