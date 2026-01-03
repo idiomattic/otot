@@ -7,7 +7,7 @@ use url::Url;
 
 pub trait Database {
     fn add_visit(&mut self, url: &str, timestamp: SystemTime) -> Result<()>;
-    fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<String>>;
+    fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<(String, f64, i64)>>;
     fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>>;
 }
 
@@ -78,7 +78,7 @@ impl Database for SqliteDatabase {
         Ok(())
     }
 
-    fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<String>> {
+    fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<(String, f64, i64)>> {
         if pattern.is_empty() {
             return Ok(vec![]);
         }
@@ -101,7 +101,7 @@ impl Database for SqliteDatabase {
             ))
         })?;
 
-        let mut matches: Vec<(String, f64)> = Vec::new();
+        let mut matches: Vec<(String, f64, i64)> = Vec::new();
         let mut row_count: u64 = 0;
 
         for row in rows {
@@ -116,7 +116,7 @@ impl Database for SqliteDatabase {
                     "Matched: {} (score: {}, frecency: {:.2})",
                     url, score, frecency
                 );
-                matches.push((url, frecency));
+                matches.push((url, frecency, last_accessed));
             }
         }
 
@@ -133,11 +133,15 @@ impl Database for SqliteDatabase {
 
         matches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-        Ok(matches.into_iter().map(|(url, _)| url).collect())
+        Ok(matches)
     }
 
     fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>> {
-        Ok(self.fuzzy_match(pattern)?.into_iter().next())
+        Ok(self
+            .fuzzy_match(pattern)?
+            .into_iter()
+            .next()
+            .map(|(s, _, _)| s))
     }
 }
 
@@ -629,8 +633,8 @@ mod tests {
 
         // Should match the two github URLs (not gitlab, because first segment doesn't match)
         assert_eq!(matches.len(), 2);
-        assert!(matches.iter().any(|u| u.contains("rust-lang")));
-        assert!(matches.iter().any(|u| u.contains("microsoft")));
+        assert!(matches.iter().any(|(u, _, _)| u.contains("rust-lang")));
+        assert!(matches.iter().any(|(u, _, _)| u.contains("microsoft")));
     }
     #[test]
     fn fuzzy_match_respects_segment_order() {
@@ -652,7 +656,8 @@ mod tests {
 
         // Should only match the first URL
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0], "https://github.com/rust-lang/rust");
+        let (match_url, _, _) = &matches[0];
+        assert_eq!(match_url, "https://github.com/rust-lang/rust");
     }
     #[test]
     fn fuzzy_match_sorts_by_frecency() {
@@ -678,7 +683,8 @@ mod tests {
             .unwrap();
 
         // Recent URL should come first due to recency boost
-        assert_eq!(matches[0], "https://github.com/new/rust");
+        let (match_url, _, _) = &matches[0];
+        assert_eq!(match_url, "https://github.com/new/rust");
     }
     #[test]
     fn fuzzy_match_returns_empty_for_no_matches() {
