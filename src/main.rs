@@ -235,7 +235,7 @@ mod tests {
             Ok(None)
         }
 
-        fn get_highest_usage_urls(&self, size: u16) -> Result<Vec<(String, f64, i64)>> {
+        fn get_highest_usage_urls(&self, _size: u16) -> Result<Vec<(String, f64, i64)>> {
             Ok(vec![])
         }
     }

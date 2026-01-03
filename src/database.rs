@@ -720,4 +720,46 @@ mod tests {
 
         assert_eq!(matches.len(), 0);
     }
+
+    // get_highest_usage_urls
+    #[test]
+    fn get_highest_usage_urls_returns_top_urls_by_score() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://github.com/low", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/high", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/high", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/high", SystemTime::now())
+            .unwrap();
+
+        let results = db.get_highest_usage_urls(5).unwrap();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, "https://github.com/high");
+        assert_eq!(results[0].1, 3.0);
+    }
+    #[test]
+    fn get_highest_usage_urls_respects_limit() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://example.com/1", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://example.com/2", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://example.com/3", SystemTime::now())
+            .unwrap();
+
+        let results = db.get_highest_usage_urls(2).unwrap();
+
+        assert_eq!(results.len(), 2);
+    }
+    #[test]
+    fn get_highest_usage_urls_returns_empty_for_empty_db() {
+        let (_temp_dir, db) = create_test_db();
+
+        let results = db.get_highest_usage_urls(10).unwrap();
+
+        assert_eq!(results.len(), 0);
+    }
 }
