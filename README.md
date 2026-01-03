@@ -101,7 +101,6 @@ This project is heavily inspired by [zoxide](https://github.com/ajeetdsouza/zoxi
 
 ## Roadmap
 - [ ] `prune` subcommand to remove records past a certain age
-- [ ] `stats` subcommand to print recent or highest activity
 
 ## License
 MIT
