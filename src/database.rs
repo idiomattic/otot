@@ -10,6 +10,8 @@ pub trait Database {
     fn fuzzy_match(&self, pattern: &[String]) -> Result<Vec<(String, f64, i64)>>;
     fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>>;
     fn get_highest_usage_urls(&self, size: u16) -> Result<Vec<(String, f64, i64)>>;
+    fn prune_by_age(&mut self, older_than_secs: i64) -> Result<usize>;
+    fn prune_by_url_pattern(&mut self, pattern: &str) -> Result<usize>;
 }
 
 pub struct SqliteDatabase {
@@ -163,6 +165,28 @@ impl Database for SqliteDatabase {
 
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .context("Failed to collect highest usage URLs")
+    }
+
+    fn prune_by_age(&mut self, older_than_secs: i64) -> Result<usize> {
+        let cutoff_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_secs() as i64
+            - older_than_secs;
+
+        let deleted = self
+            .conn
+            .execute("DELETE FROM urls WHERE last_accessed < ?1", [cutoff_time])?;
+
+        Ok(deleted)
+    }
+
+    fn prune_by_url_pattern(&mut self, pattern: &str) -> Result<usize> {
+        let deleted = self.conn.execute(
+            "DELETE FROM urls WHERE full_url LIKE ?1",
+            [format!("%{}%", pattern)],
+        )?;
+
+        Ok(deleted)
     }
 }
 

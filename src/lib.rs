@@ -1,7 +1,7 @@
 mod browser;
 mod database;
 mod url_classify;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 pub use browser::{BrowserOpener, SystemBrowserOpener, open_address_impl};
 pub use database::{Database, SqliteDatabase};
@@ -136,6 +136,27 @@ pub fn format_relative_time(timestamp_secs: i64) -> String {
         86400..=604799 => format!("{}d ago", secs / 86400),
         _ => format!("{}w ago", secs / 604800),
     }
+}
+
+pub fn parse_duration(s: &str) -> Result<Duration> {
+    if s.is_empty() {
+        anyhow::bail!("Duration cannot be empty");
+    }
+
+    let (num_str, unit) = s.split_at(s.len() - 1);
+    let num: u64 = num_str.parse().context("Invalid number in duration")?;
+
+    let seconds = match unit {
+        "d" => num * 86400,    // days
+        "w" => num * 604800,   // weeks
+        "m" => num * 2592000,  // months (30 days)
+        "y" => num * 31536000, // years (365 days)
+        _ => anyhow::bail!(
+            "Invalid duration unit. Use d (days), w (weeks), m (months), or y (years)"
+        ),
+    };
+
+    Ok(Duration::from_secs(seconds))
 }
 
 #[cfg(test)]

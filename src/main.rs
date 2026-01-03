@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use otot::{
     BrowserOpener, ConfigAction, Database, InputType, OtotConfig, SqliteDatabase,
     SystemBrowserOpener, classify_input, format_relative_time, handle_config_action,
-    open_address_impl,
+    open_address_impl, parse_duration,
 };
 
 #[derive(Parser)]
@@ -31,6 +31,13 @@ enum Command {
     Config {
         #[command(subcommand)]
         action: ConfigAction,
+    },
+    Prune {
+        #[arg(short = 't', long)]
+        older_than: Option<String>,
+
+        #[arg(short, long)]
+        url: Option<String>,
     },
 }
 
@@ -176,6 +183,42 @@ impl App {
     fn handle_config(&self, action: ConfigAction) -> Result<()> {
         handle_config_action(action)
     }
+
+    fn handle_prune(
+        &mut self,
+        older_than: Option<String>,
+        url_pattern: Option<String>,
+    ) -> Result<()> {
+        // Validate at least one argument provided
+        if older_than.is_none() && url_pattern.is_none() {
+            anyhow::bail!("Must provide at least one of --older-than or --url");
+        }
+
+        let db = self.db.get_or_insert_with(|| {
+            Box::new(SqliteDatabase::open().expect("Failed to open database"))
+        });
+
+        let mut total_deleted = 0;
+
+        if let Some(age_str) = older_than {
+            let duration = parse_duration(&age_str)?;
+            let deleted = db.prune_by_age(duration.as_secs() as i64)?;
+            println!("Pruned {} URL(s) older than {}", deleted, age_str);
+            total_deleted += deleted;
+        }
+
+        if let Some(pattern) = url_pattern {
+            let deleted = db.prune_by_url_pattern(&pattern)?;
+            println!("Pruned {} URL(s) matching '{}'", deleted, pattern);
+            total_deleted += deleted;
+        }
+
+        if total_deleted == 0 {
+            println!("No URLs matched the prune criteria");
+        }
+
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -192,6 +235,7 @@ fn main() -> Result<()> {
         Command::Query { address } => app.handle_query(&address)?,
         Command::Stats { size } => app.handle_stats(size)?,
         Command::Config { action } => app.handle_config(action)?,
+        Command::Prune { older_than, url } => app.handle_prune(older_than, url)?,
     }
 
     Ok(())
@@ -237,6 +281,14 @@ mod tests {
 
         fn get_highest_usage_urls(&self, _size: u16) -> Result<Vec<(String, f64, i64)>> {
             Ok(vec![])
+        }
+
+        fn prune_by_age(&mut self, _older_than_secs: i64) -> Result<usize> {
+            Ok(0)
+        }
+
+        fn prune_by_url_pattern(&mut self, _pattern: &str) -> Result<usize> {
+            Ok(0)
         }
     }
 
