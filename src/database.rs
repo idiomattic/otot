@@ -181,13 +181,34 @@ impl Database for SqliteDatabase {
     }
 
     fn prune_by_url_pattern(&mut self, pattern: &str) -> Result<usize> {
-        let deleted = self.conn.execute(
-            "DELETE FROM urls WHERE full_url LIKE ?1",
-            [format!("%{}%", pattern)],
-        )?;
+        // For now, not going to add the SQLite regex plugin.  Usage should be pretty simple - beginning, end markers, etc.
+        let like_pattern = convert_pattern_to_like(pattern)?;
+
+        let deleted = self
+            .conn
+            .execute("DELETE FROM urls WHERE full_url LIKE ?1", [like_pattern])?;
 
         Ok(deleted)
     }
+}
+
+fn convert_pattern_to_like(pattern: &str) -> Result<String> {
+    let unescaped = pattern.replace(r"\.", ".");
+
+    let like_pattern = if unescaped.starts_with('^') && unescaped.ends_with('$') {
+        unescaped
+            .trim_start_matches('^')
+            .trim_end_matches('$')
+            .to_string()
+    } else if unescaped.starts_with('^') {
+        format!("{}%", unescaped.trim_start_matches('^'))
+    } else if unescaped.ends_with('$') {
+        format!("%{}", unescaped.trim_end_matches('$'))
+    } else {
+        format!("%{}%", unescaped)
+    };
+
+    Ok(like_pattern)
 }
 
 fn extract_segments(url_str: &str) -> Result<Vec<String>> {
@@ -868,6 +889,57 @@ mod tests {
         let deleted = db.prune_by_url_pattern("rust").unwrap();
         assert_eq!(deleted, 2);
     }
+    #[test]
+    fn prune_by_url_pattern_exact_match() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://github.com/", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/rust", SystemTime::now())
+            .unwrap();
+
+        let deleted = db.prune_by_url_pattern("^https://github\\.com/$").unwrap();
+        assert_eq!(deleted, 1);
+    }
+    #[test]
+    fn prune_by_url_pattern_prefix_match() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://github.com/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/microsoft", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://gitlab.com/foo", SystemTime::now())
+            .unwrap();
+
+        let deleted = db.prune_by_url_pattern("^https://github\\.com/").unwrap();
+        assert_eq!(deleted, 2);
+    }
+    #[test]
+    fn prune_by_url_pattern_suffix_match() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://github.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/microsoft/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/other/project", SystemTime::now())
+            .unwrap();
+
+        let deleted = db.prune_by_url_pattern("/rust$").unwrap();
+        assert_eq!(deleted, 2);
+    }
+    #[test]
+    fn prune_by_url_pattern_contains_match() {
+        let (_temp_dir, mut db) = create_test_db();
+        db.add_visit("https://github.com/rust-lang/rust", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://github.com/microsoft/typescript", SystemTime::now())
+            .unwrap();
+        db.add_visit("https://gitlab.com/foo/bar", SystemTime::now())
+            .unwrap();
+
+        let deleted = db.prune_by_url_pattern("github\\.com").unwrap();
+        assert_eq!(deleted, 2);
+    }
+
     #[test]
     fn prune_by_age_with_empty_database() {
         let (_temp_dir, mut db) = create_test_db();
