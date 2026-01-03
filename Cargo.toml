@@ -1,6 +1,6 @@
 [package]
 name = "otot"
-version = "0.1.7"
+version = "0.2.0"
 edition = "2024"
 authors = ["Matthew Lese matthewjlese@gmail.com"]
 description = "Fuzzy URL opener for the terminal"
