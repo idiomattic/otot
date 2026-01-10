@@ -217,14 +217,7 @@ fn extract_segments(url_str: &str) -> Result<Vec<String>> {
     let mut segments: Vec<String> = Vec::new();
 
     if let Some(domain) = url.domain() {
-        let domain_parts: Vec<&str> = domain.split('.').collect();
-        if domain_parts.len() >= 2 {
-            // Use second-to-last part (e.g., "github" from "github.com" or "api.github.com")
-            segments.push(domain_parts[domain_parts.len() - 2].to_lowercase());
-        } else if domain_parts.len() == 1 {
-            // Edge case: just "localhost" or single-word domain
-            segments.push(domain_parts[0].to_lowercase());
-        }
+        segments.push(domain.to_lowercase());
     }
 
     if let Some(path_segments) = url.path_segments() {
