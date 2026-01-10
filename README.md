@@ -68,9 +68,9 @@ otot config path
 `otot` maintains a local SQLite database tracking your URL visits. When you use fuzzy matching, it:
 1. Breaks your input into segments
 2. Searches for URLs in your history that match on:
-    - exact match of base domain (e.g. "github")
-    - exact match on last path segment (e.g. "rust")
-    - intermediate segments may be skipped, but when provided, must match in the correct *relative order* (not all must be provided)
+    - fuzzy match of base domain (e.g. "github.com")
+    - fuzzy match on last path segment (e.g. "rust")
+    - intermediate segments may be skipped, but when provided, must fuzzy match in the correct *relative order* (not all must be provided)
 3. Ranks results by frecency score (visit count × recency multiplier)
 4. Opens the best match
 
@@ -98,9 +98,6 @@ The database stores visit counts and timestamps but no personal browsing data be
 
 ## Inspiration
 This project is heavily inspired by [zoxide](https://github.com/ajeetdsouza/zoxide), a wonderful CLI for navigating between directories.
-
-## Roadmap
-- [ ] `prune` subcommand to remove records past a certain age
 
 ## License
 MIT
