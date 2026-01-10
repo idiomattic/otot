@@ -337,14 +337,15 @@ fn score_pattern_match(url_segments: &[String], pattern: &[String]) -> Option<i6
     }
 
     if let (Some(pattern_last), Some(url_last)) = (pattern.last(), url_segments.last()) {
+        let last_score = if pattern_last.eq_ignore_ascii_case(url_last) {
+            100
+        } else {
+            matcher
+                .fuzzy_match(url_last, pattern_last)
+                .filter(|&s| s >= MIN_FUZZY_SCORE)?
+        };
+
         if pattern.len() > 1 {
-            let last_score = if pattern_last.eq_ignore_ascii_case(url_last) {
-                100
-            } else {
-                matcher
-                    .fuzzy_match(url_last, pattern_last)
-                    .filter(|&s| s >= MIN_FUZZY_SCORE)?
-            };
             total_score += last_score;
         }
     }
