@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use log::{debug, info};
 use rusqlite::{Connection, params};
 use std::path::PathBuf;
@@ -237,27 +239,33 @@ fn get_last_segment(segments: &[String]) -> Option<String> {
     segments.last().cloned()
 }
 
-fn is_fuzzy_match(pattern: &str, text: &str) -> bool {
-    if pattern.len() < 3 {
-        pattern.eq_ignore_ascii_case(text)
-    } else {
-        text.to_lowercase().starts_with(&pattern.to_lowercase())
-    }
-}
-
 fn does_pattern_match_segments(url_segments: &[String], pattern: &[String]) -> bool {
     if pattern.is_empty() {
         return true;
     }
 
+    let matcher = SkimMatcherV2::default();
+
     if let (Some(pattern_first), Some(url_first)) = (pattern.first(), url_segments.first()) {
-        if !is_fuzzy_match(pattern_first, url_first) {
+        let first_match = if pattern_first.len() < 3 {
+            pattern_first.eq_ignore_ascii_case(url_first)
+        } else {
+            matcher.fuzzy_match(url_first, pattern_first).is_some()
+        };
+
+        if !first_match {
             return false;
         }
     }
 
     if let (Some(pattern_last), Some(url_last)) = (pattern.last(), url_segments.last()) {
-        if !is_fuzzy_match(pattern_last, url_last) {
+        let last_match = if pattern_last.len() < 3 {
+            pattern_last.eq_ignore_ascii_case(url_last)
+        } else {
+            matcher.fuzzy_match(url_last, pattern_last).is_some()
+        };
+
+        if !last_match {
             return false;
         }
     }
