@@ -163,7 +163,7 @@ impl Database for SqliteDatabase {
             ))
         })?;
 
-        let mut matches: Vec<(String, f64, i64, i64)> = Vec::new(); // url, frecency, last_accessed, match_score
+        let mut matches: Vec<(String, f64, i64, i64, usize)> = Vec::new(); // url, frecency, last_accessed, match_score, url_segment_count
         let mut row_count: u64 = 0;
 
         for row in rows {
@@ -171,14 +171,16 @@ impl Database for SqliteDatabase {
             let (url, segments_json, score, last_accessed) = row?;
 
             let url_segments: Vec<String> = serde_json::from_str(&segments_json)?;
+            let url_segment_count = url_segments.len();
 
             if let Some(match_score) = score_pattern_match(&url_segments, pattern) {
                 let frecency = calculate_frecency(score, last_accessed);
+                let seg_proximity = segment_proximity_multiplier(pattern.len(), url_segment_count);
                 debug!(
-                    "Matched: {} (visit_score: {}, frecency: {:.2}, match_quality: {})",
-                    url, score, frecency, match_score
+                    "Matched: {} (visit_score: {}, frecency: {:.2}, match_quality: {}, seg_proximity: {:.2})",
+                    url, score, frecency, match_score, seg_proximity
                 );
-                matches.push((url, frecency, last_accessed, match_score));
+                matches.push((url, frecency, last_accessed, match_score, url_segment_count));
             }
         }
 
@@ -193,19 +195,25 @@ impl Database for SqliteDatabase {
             );
         }
 
-        // Sort by combined score: frecency * match_quality_multiplier
+        // Sort by combined score: frecency * match_quality_multiplier * segment_proximity_multiplier
         // Normalize match_score to a multiplier (0.5 to 1.5 range)
+        // Normalize segment proximity to a multiplier (0.7 to 1.3 range)
         // This ensures good matches get boosted but high-frecency URLs aren't buried
+        let pattern_len = pattern.len();
         matches.sort_by(|a, b| {
-            let a_combined = a.1 * match_quality_multiplier(a.3);
-            let b_combined = b.1 * match_quality_multiplier(b.3);
+            let a_combined = a.1
+                * match_quality_multiplier(a.3)
+                * segment_proximity_multiplier(pattern_len, a.4);
+            let b_combined = b.1
+                * match_quality_multiplier(b.3)
+                * segment_proximity_multiplier(pattern_len, b.4);
             b_combined.partial_cmp(&a_combined).unwrap()
         });
 
-        // Return in the original format (dropping match_score)
+        // Return in the original format (dropping match_score and segment_count)
         Ok(matches
             .into_iter()
-            .map(|(url, frecency, last_accessed, _)| (url, frecency, last_accessed))
+            .map(|(url, frecency, last_accessed, _, _)| (url, frecency, last_accessed))
             .collect())
     }
 
@@ -397,6 +405,22 @@ fn match_quality_multiplier(match_score: i64) -> f64 {
     0.5 + normalized
 }
 
+/// Converts segment count difference into a multiplier for ranking.
+/// URLs with segment counts closer to the pattern length are boosted.
+/// Returns a value in the range [0.7, 1.3]:
+/// - Exact match (diff = 0): 1.3
+/// - Small difference (diff = 1-2): ~1.1-1.2
+/// - Large difference (diff >= 5): 0.7
+fn segment_proximity_multiplier(pattern_len: usize, url_segment_len: usize) -> f64 {
+    let diff = url_segment_len.abs_diff(pattern_len);
+
+    // Normalize: diff 0 -> 1.0, diff 5+ -> 0.0
+    let normalized = 1.0 - (diff as f64 / 5.0).min(1.0);
+
+    // Map to [0.7, 1.3] range
+    0.7 + (normalized * 0.6)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -492,6 +516,35 @@ mod tests {
     fn multiplier_medium_match_returns_middle() {
         let mult = match_quality_multiplier(100);
         assert!(mult > 0.8 && mult < 1.2);
+    }
+
+    // ===========================================
+    // segment_proximity_multiplier tests
+    // ===========================================
+
+    #[test]
+    fn segment_proximity_exact_match_returns_high() {
+        let mult = segment_proximity_multiplier(2, 2);
+        assert!((mult - 1.3).abs() < 0.01);
+    }
+
+    #[test]
+    fn segment_proximity_small_diff_returns_moderate() {
+        let mult = segment_proximity_multiplier(2, 3);
+        assert!(mult > 1.0 && mult < 1.3); // diff of 1
+    }
+
+    #[test]
+    fn segment_proximity_large_diff_returns_low() {
+        let mult = segment_proximity_multiplier(2, 7);
+        assert!((mult - 0.7).abs() < 0.01); // diff of 5+
+    }
+
+    #[test]
+    fn segment_proximity_pattern_longer_than_url() {
+        // This shouldn't happen normally, but the multiplier should handle it
+        let mult = segment_proximity_multiplier(5, 2);
+        assert!(mult > 0.9 && mult < 1.1); // diff of 3
     }
 
     // ===========================================
@@ -1037,6 +1090,34 @@ mod tests {
             .unwrap();
 
         assert_eq!(matches.len(), 0);
+    }
+
+    #[test]
+    fn fuzzy_match_prefers_shorter_urls_for_short_patterns() {
+        let (_temp_dir, mut db) = create_test_db();
+
+        let same_time = SystemTime::now();
+
+        // Add a short URL (3 segments: github.com, peerspace, messaging-v2)
+        db.add_visit("https://github.com/peerspace/messaging-v2", same_time)
+            .unwrap();
+
+        // Add a longer URL (6 segments: github.com, peerspace, api-docs, blob, develop, messaging-v2)
+        db.add_visit(
+            "https://github.com/peerspace/api-docs/blob/develop/messaging-v2",
+            same_time,
+        )
+        .unwrap();
+
+        // Query with a 2-segment pattern (gh, mv2)
+        let matches = db
+            .fuzzy_match(&["gh".to_string(), "mv2".to_string()])
+            .unwrap();
+
+        assert_eq!(matches.len(), 2);
+        // The shorter URL should rank first due to segment proximity boost
+        let (first_match, _, _) = &matches[0];
+        assert_eq!(first_match, "https://github.com/peerspace/messaging-v2");
     }
 
     // ===========================================
