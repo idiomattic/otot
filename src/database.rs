@@ -200,21 +200,22 @@ impl Database for SqliteDatabase {
         // Normalize segment proximity to a multiplier (0.7 to 1.3 range)
         // This ensures good matches get boosted but high-frecency URLs aren't buried
         let pattern_len = pattern.len();
-        matches.sort_by(|a, b| {
-            let a_combined = a.1
-                * match_quality_multiplier(a.3)
-                * segment_proximity_multiplier(pattern_len, a.4);
-            let b_combined = b.1
-                * match_quality_multiplier(b.3)
-                * segment_proximity_multiplier(pattern_len, b.4);
-            b_combined.partial_cmp(&a_combined).unwrap()
-        });
 
-        // Return in the original format (dropping match_score and segment_count)
-        Ok(matches
+        let mut scored: Vec<(String, f64, i64)> = matches
             .into_iter()
-            .map(|(url, frecency, last_accessed, _, _)| (url, frecency, last_accessed))
-            .collect())
+            .map(
+                |(url, frecency, last_accessed, match_score, url_seg_count)| {
+                    let combined = frecency
+                        * match_quality_multiplier(match_score)
+                        * segment_proximity_multiplier(pattern_len, url_seg_count);
+                    (url, combined, last_accessed)
+                },
+            )
+            .collect();
+
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        Ok(scored)
     }
 
     fn get_best_match(&self, pattern: &[String]) -> Result<Option<String>> {
