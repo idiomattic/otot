@@ -133,7 +133,7 @@ impl Database for SqliteDatabase {
         let first_prefix = pattern
             .first()
             .and_then(|s| s.chars().next())
-            .map(|c| format!("{}%", c.to_lowercase()))
+            .map(|c| format!("%{}%", c.to_lowercase()))
             .unwrap_or_else(|| "%".to_string());
 
         let last_prefix = pattern
